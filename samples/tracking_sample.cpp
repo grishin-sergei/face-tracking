@@ -67,10 +67,8 @@ int main( int argc, const char** argv )
 
     // Get the first frame
     cv::Mat frame;
-   while(frame.empty())
-    {
-        cap >> frame;
-    }
+    cap >> frame;
+	cap >> frame;
 
     // Initialize GTReader and PrecisionRecallEvaluator
     std::string argv3 = parser.get<std::string>("3");
@@ -99,11 +97,6 @@ int main( int argc, const char** argv )
     // Run tracking
     while (true)
     {
-        // Fetch next frame
-        cap >> frame;
-        if(frame.empty())
-            break;
-
         // Track object
         cv::Rect position;
         bool found = tracker->track(frame, position);
@@ -122,6 +115,11 @@ int main( int argc, const char** argv )
                               found ? position : cv::Rect(),
                               rect_color,
                               gt))
+            break;
+
+		// Fetch next frame
+        cap >> frame;
+        if(frame.empty())
             break;
     }
 
