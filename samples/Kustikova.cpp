@@ -131,7 +131,7 @@ bool TrackerKustikova::filterRANSAC(std::vector<cv::Point2f> &corners,
 	}
    // detector.detect(prev_, keypoints1);
     vector<KeyPoint> keypoints2;
-	for(int i = 0; i < corners.size(); i++)
+	for(int i = 0; i < nextCorners.size(); i++)
 	{
 		keypoints2.push_back(KeyPoint(nextCorners[i].x, nextCorners[i].y, 1));
 	}
@@ -355,22 +355,22 @@ bool TrackerKustikova::track( const cv::Mat& frame, cv::Rect& new_position )
     std::vector<cv::Point2f> nextCorners;
 	cv::Mat frameGray;
 	cv::cvtColor(frame, frameGray, CV_BGR2GRAY);
-    /*std::vector<uchar> status;
+    std::vector<uchar> status;
     std::vector<float> errors;    
     cv::calcOpticalFlowPyrLK(prevFrame_, frameGray, 
-        corners, nextCorners, status, errors);*/
+        corners, nextCorners, status, errors);
 
-	if (!filterRANSAC(corners, nextCorners, frameGray))
-    {
-        std::cout << "There are no feature points for tracking." << std::endl;
-        return false;
-    }
-
-   /* if (!filterCorners(corners, nextCorners, status, errors))
+	/*if (!filterRANSAC(corners, nextCorners, frameGray))
     {
         std::cout << "There are no feature points for tracking." << std::endl;
         return false;
     }*/
+
+    if (!filterCorners(corners, nextCorners, status, errors))
+    {
+        std::cout << "There are no feature points for tracking." << std::endl;
+        return false;
+    }
 
 	drawDetections(corners, cv::Scalar(255, 0, 0), frame);
 
