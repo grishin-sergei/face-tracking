@@ -15,10 +15,10 @@
 using namespace cv;
 using namespace std;
 
-class TrackerKustikova : public Tracker
+class TrackerForProject : public Tracker
 {
  public:
-    virtual ~TrackerKustikova() {}
+    virtual ~TrackerForProject() {}
 
     virtual bool init( const cv::Mat& frame, const cv::Rect& initial_position );
     virtual bool track( const cv::Mat& frame, cv::Rect& new_position );
@@ -60,7 +60,7 @@ void drawDetections(const cv::vector<cv::Point2f>& detections, const cv::Scalar&
     }
 }
 
-bool TrackerKustikova::init( const cv::Mat& frame, const cv::Rect& initial_position )
+bool TrackerForProject::init( const cv::Mat& frame, const cv::Rect& initial_position )
 {
     position_ = initial_position;
     cv::cvtColor(frame, prevFrame_, CV_BGR2GRAY);
@@ -73,13 +73,13 @@ bool TrackerKustikova::init( const cv::Mat& frame, const cv::Rect& initial_posit
     return true;
 }
 
-float TrackerKustikova::median(std::vector<float> &v)
+float TrackerForProject::median(std::vector<float> &v)
 {
     std::sort(v.begin(), v.end());
     return v[v.size() / 2];
 }
 
-bool TrackerKustikova::filterCorners(std::vector<cv::Point2f> &corners, 
+bool TrackerForProject::filterCorners(std::vector<cv::Point2f> &corners, 
         std::vector<cv::Point2f> &nextCorners, std::vector<uchar> &status,
         std::vector<float> &errors)
 {
@@ -119,7 +119,7 @@ bool TrackerKustikova::filterCorners(std::vector<cv::Point2f> &corners,
     return true;
 }
 
-bool TrackerKustikova::filterRANSAC(cv::Mat newFrame_, vector<Point2f> &corners, vector<Point2f> &nextCorners)
+bool TrackerForProject::filterRANSAC(cv::Mat newFrame_, vector<Point2f> &corners, vector<Point2f> &nextCorners)
 {
 	int ransacReprojThreshold = 3;
 
@@ -172,11 +172,9 @@ bool TrackerKustikova::filterRANSAC(cv::Mat newFrame_, vector<Point2f> &corners,
 		Point2f p1 = points1Projected.at<Point2f>(matches[i].queryIdx);
         Point2f p2 = keypoints2.at(matches[i].trainIdx).pt;
 		if(((p2.x - p1.x) * (p2.x - p1.x) +
-			(p2.y - p1.y) * (p2.y - p1.y) <= ransacReprojThreshold * ransacReprojThreshold)&& ((p2.x > position_.x - 10) &&(p2.x < position_.x + position_.width + 10) && (p2.y > position_.y - 10) &&(p2.y < position_.y + position_.height + 10)) )
+			(p2.y - p1.y) * (p2.y - p1.y) <= ransacReprojThreshold * ransacReprojThreshold)&& ((p2.x > position_.x - 10) 
+			&& (p2.x < position_.x + position_.width + 10) && (p2.y > position_.y - 10) &&(p2.y < position_.y + position_.height + 10)) )
 		{
-			//inliner.push_back(matches[i]);
-			//&& ((p2.x > position_.x - 10) &&(p2.x < position_.x + 10) && (p2.y > position_.y - 10) &&(p2.y < position_.y + 10))
-
 			corners.push_back(keypoints1.at(matches[i].queryIdx).pt);
 			nextCorners.push_back(keypoints2.at(matches[i].trainIdx).pt);
 
@@ -189,9 +187,6 @@ bool TrackerKustikova::filterRANSAC(cv::Mat newFrame_, vector<Point2f> &corners,
 		corners[i].x += position_.x;
 		corners[i].y += position_.y;
 	}
-
-//	drawMatches(prev_, keypoints1, newFrame_, keypoints2, matches, img_matches);
- //   imshow("matches before homography", img_matches);
 
 	keypoints1 = keypoints3;
 
@@ -209,7 +204,7 @@ bool TrackerKustikova::filterRANSAC(cv::Mat newFrame_, vector<Point2f> &corners,
     return true;
 }
 
-bool TrackerKustikova::computeMedianShift(std::vector<cv::Point2f> &corners, 
+bool TrackerForProject::computeMedianShift(std::vector<cv::Point2f> &corners, 
         std::vector<cv::Point2f> &nextCorners, float &dx, float &dy)
 {
     std::vector<float> shiftOx, shiftOy;
@@ -223,7 +218,7 @@ bool TrackerKustikova::computeMedianShift(std::vector<cv::Point2f> &corners,
     return true;
 }
 
-bool TrackerKustikova::computePointDistances(std::vector<cv::Point2f> &corners,
+bool TrackerForProject::computePointDistances(std::vector<cv::Point2f> &corners,
         std::vector<float> &dist)
 {
     dist.clear();
@@ -237,7 +232,7 @@ bool TrackerKustikova::computePointDistances(std::vector<cv::Point2f> &corners,
     return true;
 }
 
-bool TrackerKustikova::computeDistScales(std::vector<float> &dist, 
+bool TrackerForProject::computeDistScales(std::vector<float> &dist, 
         std::vector<float> &nextDist, std::vector<float> &distScales)
 {
     distScales.clear();
@@ -248,7 +243,7 @@ bool TrackerKustikova::computeDistScales(std::vector<float> &dist,
     return true;
 }
 
-bool TrackerKustikova::computeScaleFactor(std::vector<cv::Point2f> &corners,
+bool TrackerForProject::computeScaleFactor(std::vector<cv::Point2f> &corners,
         std::vector<cv::Point2f> &nextCorners, float &scale)
 {
     if (corners.size() <= 1 || nextCorners.size() <= 1)
@@ -263,7 +258,7 @@ bool TrackerKustikova::computeScaleFactor(std::vector<cv::Point2f> &corners,
     return true;
 }
 
-bool TrackerKustikova::restoreBoundingBox(std::vector<cv::Point2f> &corners,
+bool TrackerForProject::restoreBoundingBox(std::vector<cv::Point2f> &corners,
         std::vector<cv::Point2f> &nextCorners, cv::Rect &new_position)
 {
     float dx, dy;
@@ -294,7 +289,7 @@ bool TrackerKustikova::restoreBoundingBox(std::vector<cv::Point2f> &corners,
     return true;
 }
 
-bool TrackerKustikova::track( const cv::Mat& frame, cv::Rect& new_position )
+bool TrackerForProject::track( const cv::Mat& frame, cv::Rect& new_position )
 {  
     if (keypoints1.empty())
     {
@@ -328,7 +323,7 @@ bool TrackerKustikova::track( const cv::Mat& frame, cv::Rect& new_position )
 	return true;
 }
 
-cv::Ptr<Tracker> createTrackerKustikova()
+cv::Ptr<Tracker> createTrackerForProject()
 {
-    return cv::Ptr<Tracker>(new TrackerKustikova());
+    return cv::Ptr<Tracker>(new TrackerForProject());
 }
