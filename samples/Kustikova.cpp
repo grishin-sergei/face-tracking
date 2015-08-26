@@ -25,14 +25,14 @@ class TrackerKustikova : public Tracker
 
  private:
     cv::Rect position_;
-    cv::Mat prevFrame_;
+    cv::Mat prevFrame_;	
+    vector<KeyPoint> keypoints1;
 
     bool filterCorners(std::vector<cv::Point2f> &corners, 
         std::vector<cv::Point2f> &nextCorners, std::vector<uchar> &status,
         std::vector<float> &errors);
 
-	bool filterRANSAC(std::vector<cv::Point2f> &corners, 
-        std::vector<cv::Point2f> &nextCorners, cv::Mat newFrame_);
+	bool filterRANSAC(cv::Mat newFrame_, vector<Point2f> &corners, vector<Point2f> &nextCorners);
 
     bool restoreBoundingBox(std::vector<cv::Point2f> &corners, 
         std::vector<cv::Point2f> &nextCorners, cv::Rect &new_position);
@@ -64,6 +64,11 @@ bool TrackerKustikova::init( const cv::Mat& frame, const cv::Rect& initial_posit
 {
     position_ = initial_position;
     cv::cvtColor(frame, prevFrame_, CV_BGR2GRAY);
+
+	Mat prev_(prevFrame_(position_));
+
+	SurfFeatureDetector detector;
+	detector.detect(prev_, keypoints1);
 
     return true;
 }
@@ -114,8 +119,7 @@ bool TrackerKustikova::filterCorners(std::vector<cv::Point2f> &corners,
     return true;
 }
 
-bool TrackerKustikova::filterRANSAC(std::vector<cv::Point2f> &corners, 
-        std::vector<cv::Point2f> &nextCorners, cv::Mat newFrame_)
+bool TrackerKustikova::filterRANSAC(cv::Mat newFrame_, vector<Point2f> &corners, vector<Point2f> &nextCorners)
 {
 	int ransacReprojThreshold = 3;
 
@@ -123,20 +127,12 @@ bool TrackerKustikova::filterRANSAC(std::vector<cv::Point2f> &corners,
 	cv::Mat new_(newFrame_);
 
 	// detecting keypoints
-   // SurfFeatureDetector detector;
-    vector<KeyPoint> keypoints1;
-	for(int i = 0; i < corners.size(); i++)
-	{
-		keypoints1.push_back(KeyPoint(corners[i].x, corners[i].y, 1));
-	}
-   // detector.detect(prev_, keypoints1);
+    SurfFeatureDetector detector;
+
+	detector.detect(prev_, keypoints1);
+
     vector<KeyPoint> keypoints2;
-	for(int i = 0; i < nextCorners.size(); i++)
-	{
-		keypoints2.push_back(KeyPoint(nextCorners[i].x, nextCorners[i].y, 1));
-	}
-   // detector.detect(new_, keypoints2);
-	//std::cout << keypoints1.size() << " " << keypoints2.size() << std::endl;
+    detector.detect(new_, keypoints2);
 
     // computing descriptors
     SurfDescriptorExtractor extractor;
@@ -149,17 +145,15 @@ bool TrackerKustikova::filterRANSAC(std::vector<cv::Point2f> &corners,
     BFMatcher matcher;
     vector<DMatch> matches;
     matcher.match(descriptors1, descriptors2, matches);
-	Mat img_matches;
-	
-    //waitKey(0);
 	
 	std::cout << matches.size() << std::endl;
 
 	vector<Point2f> points1, points2;
+
     // fill the arrays with the points
     for (int i = 0; i < matches.size(); i++)
     {
-        points1.push_back(keypoints1[i].pt);
+		points1.push_back(keypoints1[matches[i].queryIdx].pt);
     }
     for (int i = 0; i < matches.size(); i++)
     {
@@ -170,79 +164,44 @@ bool TrackerKustikova::filterRANSAC(std::vector<cv::Point2f> &corners,
 
     Mat points1Projected;
     perspectiveTransform(Mat(points1), points1Projected, H);
-	
 
-
-	//int minHessian = 15;
-
-	//cv::FastFeatureDetector detector( minHessian );
-
-	//int ransacDistance = 3;
-
-	//cv::Mat prev_(prevFrame_);
-	//cv::Mat new_(newFrame_);   
-
-	//std::vector<cv::KeyPoint> keypoints_object;
-	//std::vector<cv::KeyPoint> keypoints_scene;
-
- //   detector.detect( prev_, keypoints_object );
- //   detector.detect( new_, keypoints_scene );
-
-	//cv::SurfDescriptorExtractor extractor;
-
-	//cv::Mat descriptors_object, descriptors_scene;
-
- //   extractor.compute( prev_, keypoints_object, descriptors_object );
- //   extractor.compute( new_, keypoints_scene, descriptors_scene );
-
-	//cv::BFMatcher matcher;
-
- //   std::vector<cv::DMatch > matches;
- //   matcher.match( prev_, new_, matches);
-
-	////-- Localize the object
- //   std::vector<cv::Point2f> obj;
- //   std::vector<cv::Point2f> scene;
-	//
- //   for( int i = 0; i < matches.size(); i++ )
-	//{
-	//	//-- Get the keypoints from the good matches
-	//	obj.push_back( corners[ matches[i].queryIdx ] );
-	//	scene.push_back( nextCorners[ matches[i].trainIdx ] );
- //   }
-
-	//cv::Mat H = cv::findHomography( obj, scene, CV_RANSAC, ransacDistance );
-
-	//std::vector<cv::Point2f> obj_corners;
-	//std::vector<cv::Point2f> scene_corners;
-
-	//cv::perspectiveTransform( obj_corners, scene_corners, H);
-
-	//cv::vector<cv::DMatch> inliner;
-
-	std::vector<cv::Point2f> new_corners, new_nextCorners;
+	vector<KeyPoint> keypoints3;
 
 	for(int i = 0; i < matches.size(); i++)
 	{
 		Point2f p1 = points1Projected.at<Point2f>(matches[i].queryIdx);
         Point2f p2 = keypoints2.at(matches[i].trainIdx).pt;
 		if(((p2.x - p1.x) * (p2.x - p1.x) +
-			(p2.y - p1.y) * (p2.y - p1.y) <= ransacReprojThreshold * ransacReprojThreshold) )
+			(p2.y - p1.y) * (p2.y - p1.y) <= ransacReprojThreshold * ransacReprojThreshold)&& ((p2.x > position_.x - 10) &&(p2.x < position_.x + position_.width + 10) && (p2.y > position_.y - 10) &&(p2.y < position_.y + position_.height + 10)) )
 		{
 			//inliner.push_back(matches[i]);
 			//&& ((p2.x > position_.x - 10) &&(p2.x < position_.x + 10) && (p2.y > position_.y - 10) &&(p2.y < position_.y + 10))
 
-			new_corners.push_back(p1);
-			new_nextCorners.push_back(p2);
+			corners.push_back(keypoints1.at(matches[i].queryIdx).pt);
+			nextCorners.push_back(keypoints2.at(matches[i].trainIdx).pt);
+
+			keypoints3.push_back(keypoints2.at(matches[i].trainIdx));
 		}		
 	}
+
+	for(int i = 0; i < corners.size(); i++)
+	{
+		corners[i].x += position_.x;
+		corners[i].y += position_.y;
+	}
+
 //	drawMatches(prev_, keypoints1, newFrame_, keypoints2, matches, img_matches);
  //   imshow("matches before homography", img_matches);
 
-	corners = new_corners;
-	nextCorners = new_nextCorners;
+	keypoints1 = keypoints3;
 
-    if (corners.empty())
+	for(int i = 0; i < keypoints1.size(); i++)
+	{
+		keypoints1[i].pt.x -= position_.x;
+		keypoints1[i].pt.y -= position_.y;
+	}
+
+    if (keypoints1.empty())
     {
         return false;
     }
@@ -336,37 +295,20 @@ bool TrackerKustikova::restoreBoundingBox(std::vector<cv::Point2f> &corners,
 }
 
 bool TrackerKustikova::track( const cv::Mat& frame, cv::Rect& new_position )
-{
-    cv::Mat object = prevFrame_(position_);
-    std::vector<cv::Point2f> corners;
-    const int maxCorners = 100;
-    cv::goodFeaturesToTrack(object, corners, maxCorners, 0.01, 5);
-    if (corners.empty())
+{  
+    if (keypoints1.empty())
     {
         std::cout << "Tracked object is lost." << std::endl;
         return false;
     }
-    for (int i = 0; i < corners.size(); i++)
-    {
-        corners[i].x += position_.x;
-        corners[i].y += position_.y;
-    }
 
-    std::vector<cv::Point2f> nextCorners;
 	cv::Mat frameGray;
 	cv::cvtColor(frame, frameGray, CV_BGR2GRAY);
-    std::vector<uchar> status;
-    std::vector<float> errors;    
-    cv::calcOpticalFlowPyrLK(prevFrame_, frameGray, 
-        corners, nextCorners, status, errors);
+	
 
-	/*if (!filterRANSAC(corners, nextCorners, frameGray))
-    {
-        std::cout << "There are no feature points for tracking." << std::endl;
-        return false;
-    }*/
+	vector<Point2f> corners, nextCorners;
 
-    if (!filterCorners(corners, nextCorners, status, errors))
+	if (!filterRANSAC(frameGray, corners, nextCorners))
     {
         std::cout << "There are no feature points for tracking." << std::endl;
         return false;
