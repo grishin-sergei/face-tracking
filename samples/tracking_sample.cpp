@@ -16,9 +16,10 @@ void help(const char *argv0)
         "of a bounding box in the described format. Examples can also be found \n"
         "in the\"dataset\" folder.\n\n"
         "Examples:\n\n"
-        "$ ./bin/tracking_sample dummy ../dataset/xxx.mp4\n\n"
-        "$ ./bin/tracking_sample dummy ../dataset/xxx.mp4 142,125,232,164\n\n"
-        "$ ./bin/tracking_sample dummy ../dataset/xxx.mp4 ../dataset/xxx.txt\n\n"
+        "$ ./bin/tracking_sample FaceTracker ../dataset/xxx.mp4\n\n"
+        "$ ./bin/tracking_sample FaceTracker ../dataset/xxx.mp4 142,125,232,164\n\n"
+        "$ ./bin/tracking_sample FaceTracker ../dataset/xxx.mp4 ../dataset/xxx.txt\n\n"
+        "$ ./bin/tracking_sample FaceTracker camera\n\n"
               << std::endl;
 }
 
@@ -49,7 +50,11 @@ int main( int argc, const char** argv )
 
     // Open the video file
     cv::VideoCapture cap;
+<<<<<<< HEAD
 	if(video_name != "camera")
+=======
+    if(video_name != "camera")
+>>>>>>> upstream/master
     {
         cap.open( video_name );
     }
@@ -67,8 +72,15 @@ int main( int argc, const char** argv )
 
     // Get the first frame
     cv::Mat frame;
+<<<<<<< HEAD
     cap >> frame;
 	cap >> frame;
+=======
+    while(frame.empty())
+    {
+        cap >> frame;
+    }
+>>>>>>> upstream/master
 
     // Initialize GTReader and PrecisionRecallEvaluator
     std::string argv3 = parser.get<std::string>("3");
